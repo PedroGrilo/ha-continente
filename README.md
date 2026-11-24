@@ -12,12 +12,15 @@ através do servidor MCP oficial do Continente (`mcp.continente.pt`).
 
 1. HACS → ⋮ → Repositórios personalizados → `https://github.com/PedroGrilo/ha-continente`, categoria **Integração**.
 2. Descarrega **Continente** e reinicia o Home Assistant.
-3. Definições → Dispositivos e serviços → Adicionar integração → **Continente**, e inicia sessão
-   com a tua conta Continente (escolhe *Iniciar sessão*, não *convidado*).
-4. Em *Configurar* podes escolher outra lista `todo`.
+3. Definições → Dispositivos e serviços → Adicionar integração → **Continente**.
+4. Abre o link de login, escolhe *Iniciar sessão* (não *convidado*) e entra com a tua conta.
+   No fim o browser vai para `http://localhost/continente-ha?code=…` e mostra um erro — é normal:
+   copia esse endereço e cola-o no Home Assistant.
+5. Em *Configurar* podes escolher outra lista `todo`.
 
-O login usa OAuth com registo automático do cliente e PKCE; a sessão renova-se sozinha.
-Se for revogada, o Home Assistant pede para voltares a iniciar sessão.
+O Continente só aceita endereços de retorno em `localhost`, por isso o login não volta sozinho
+ao Home Assistant e o endereço tem de ser colado à mão. Usa OAuth com registo automático do
+cliente e PKCE; a sessão renova-se sozinha e, se for revogada, o HA pede novo login.
 
 ## Como é escolhido o produto de cada artigo
 

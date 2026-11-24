@@ -1,22 +1,27 @@
 {
   "config": {
     "step": {
-      "pick_implementation": {
-        "title": "Escolher o método de autenticação"
-      },
-      "reauth_confirm": {
-        "title": "Voltar a iniciar sessão no Continente",
-        "description": "A sessão do Continente expirou ou foi revogada. Inicia sessão outra vez para os preços e o carrinho continuarem a funcionar."
+      "login": {
+        "title": "Iniciar sessão no Continente",
+        "description": "1. Abre **[este link de login do Continente]({url})** e escolhe **Iniciar sessão** (não *convidado*).\n2. No fim, o browser vai para um endereço `http://localhost/continente-ha?code=…` e mostra um erro — **é normal**.\n3. Copia o endereço completo dessa página (barra de endereços) e cola-o aqui.\n\nO link só serve para este login; se o fechares, recomeça a configuração.",
+        "data": {
+          "return_url": "Endereço da página de retorno"
+        }
       }
     },
     "abort": {
       "already_configured": "O Continente já está configurado.",
       "cannot_connect": "Não foi possível contactar o Continente para iniciar o login. Tenta mais tarde.",
-      "reauth_successful": "Sessão iniciada outra vez.",
-      "missing_configuration": "Não foi possível preparar o login do Continente."
+      "reauth_successful": "Sessão iniciada outra vez."
     },
     "create_entry": {
       "default": "Sessão iniciada no Continente."
+    },
+    "error": {
+      "no_code": "Esse endereço não tem o código de login. Copia o endereço completo, que começa por http://localhost/continente-ha?code=…",
+      "wrong_state": "Esse endereço é de outro login. Usa o link desta página.",
+      "login_refused": "O login foi cancelado ou recusado no Continente.",
+      "token_failed": "O Continente não aceitou o código (pode ter expirado). Abre o link outra vez e cola o endereço novo."
     }
   },
   "options": {

@@ -1,22 +1,27 @@
 {
   "config": {
     "step": {
-      "pick_implementation": {
-        "title": "Pick authentication method"
-      },
-      "reauth_confirm": {
-        "title": "Sign in to Continente again",
-        "description": "The Continente login expired or was revoked. Sign in again to keep prices and the basket working."
+      "login": {
+        "title": "Sign in to Continente",
+        "description": "1. Open **[this Continente login link]({url})** and choose **Iniciar sessão** (not guest).\n2. At the end the browser goes to `http://localhost/continente-ha?code=…` and shows an error — **that is expected**.\n3. Copy that page's full address from the address bar and paste it here.\n\nThe link only works for this login; if you close this dialog, start again.",
+        "data": {
+          "return_url": "Return page address"
+        }
       }
     },
     "abort": {
       "already_configured": "Continente is already configured.",
       "cannot_connect": "Could not reach Continente to start the login. Try again later.",
-      "reauth_successful": "Signed in again.",
-      "missing_configuration": "The Continente login could not be prepared."
+      "reauth_successful": "Signed in again."
     },
     "create_entry": {
       "default": "Signed in to Continente."
+    },
+    "error": {
+      "no_code": "That address has no login code. Copy the full address, starting with http://localhost/continente-ha?code=…",
+      "wrong_state": "That address belongs to another login. Use the link on this page.",
+      "login_refused": "The login was cancelled or refused at Continente.",
+      "token_failed": "Continente did not accept the code (it may have expired). Open the link again and paste the new address."
     }
   },
   "options": {
