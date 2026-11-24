@@ -204,13 +204,21 @@ class ListPricer:
     async def _search(self, names: dict[str, str], now: float) -> None:
         """Pesquisa no catálogo os artigos sem produto, numa só chamada (pré-visualização)."""
         queries = list(names.values())
-        try:
-            data = await self.api.resolve_list([{"query": q[:80], "quantity": 1} for q in queries])
-        except ContinenteError as err:
-            _LOGGER.warning("Não consegui pesquisar %d artigos no Continente: %s", len(queries), err)
-            return
-        by_query = {norm(r.get("query", "")): r for r in data.get("resolved", [])}
+        by_query: dict[str, dict[str, Any]] = {}
+        failed: set[str] = set()
+        # O Continente aceita no máximo 20 artigos por chamada.
+        for start in range(0, len(queries), 20):
+            batch = queries[start : start + 20]
+            try:
+                data = await self.api.resolve_list([{"query": q[:80], "quantity": 1} for q in batch])
+            except ContinenteError as err:
+                _LOGGER.warning("Não consegui pesquisar %d artigos no Continente: %s", len(batch), err)
+                failed.update(norm(q) for q in batch)
+                continue
+            by_query.update({norm(r.get("query", "")): r for r in data.get("resolved", [])})
         for key, name in names.items():
+            if key in failed:
+                continue  # tenta outra vez na próxima atualização em vez de guardar "não encontrado"
             r = by_query.get(norm(name))
             if r and r.get("selected"):
                 entry = {
