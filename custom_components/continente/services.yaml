@@ -1,0 +1,41 @@
+search_product:
+  fields:
+    query:
+      required: true
+      example: "natas para culinária"
+      selector:
+        text:
+    limit:
+      default: 10
+      selector:
+        number:
+          min: 1
+          max: 20
+          mode: box
+
+price_list:
+
+choose_product:
+  fields:
+    item:
+      required: true
+      example: "Natas"
+      selector:
+        text:
+    sku:
+      example: "7853460"
+      selector:
+        text:
+
+send_to_basket:
+  fields:
+    dry_run:
+      default: false
+      selector:
+        boolean:
+    items:
+      example: '[{"sku": "7853460", "quantity": 2}]'
+      selector:
+        object:
+
+view_basket:

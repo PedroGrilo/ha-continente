@@ -1,0 +1,97 @@
+{
+  "config": {
+    "step": {
+      "pick_implementation": {
+        "title": "Escolher o método de autenticação"
+      },
+      "reauth_confirm": {
+        "title": "Voltar a iniciar sessão no Continente",
+        "description": "A sessão do Continente expirou ou foi revogada. Inicia sessão outra vez para os preços e o carrinho continuarem a funcionar."
+      }
+    },
+    "abort": {
+      "already_configured": "O Continente já está configurado.",
+      "cannot_connect": "Não foi possível contactar o Continente para iniciar o login. Tenta mais tarde.",
+      "reauth_successful": "Sessão iniciada outra vez.",
+      "missing_configuration": "Não foi possível preparar o login do Continente."
+    },
+    "create_entry": {
+      "default": "Sessão iniciada no Continente."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Lista de compras",
+        "data": {
+          "todo_entity": "Lista de compras (todo)"
+        },
+        "data_description": {
+          "todo_entity": "A lista cujos artigos recebem os preços do Continente."
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "lista": {
+        "name": "Estimativa da lista de compras"
+      },
+      "carrinho": {
+        "name": "Carrinho"
+      }
+    }
+  },
+  "services": {
+    "search_product": {
+      "name": "Pesquisar produto",
+      "description": "Pesquisa no catálogo do Continente.",
+      "fields": {
+        "query": {
+          "name": "Pesquisa",
+          "description": "Nome do produto."
+        },
+        "limit": {
+          "name": "Limite",
+          "description": "Número de resultados."
+        }
+      }
+    },
+    "price_list": {
+      "name": "Preços da lista",
+      "description": "Liga cada artigo por comprar a um produto do Continente e devolve os preços."
+    },
+    "choose_product": {
+      "name": "Escolher produto",
+      "description": "Memoriza que produto do Continente usar para um artigo da lista. Sem SKU, esquece a escolha.",
+      "fields": {
+        "item": {
+          "name": "Artigo",
+          "description": "Nome do artigo como está na lista."
+        },
+        "sku": {
+          "name": "SKU",
+          "description": "ID do produto no Continente."
+        }
+      }
+    },
+    "send_to_basket": {
+      "name": "Enviar para o carrinho",
+      "description": "Põe os produtos no carrinho do Continente (o mesmo da app). Nunca faz encomendas.",
+      "fields": {
+        "dry_run": {
+          "name": "Só pré-visualizar",
+          "description": "Devolve o que seria adicionado sem mexer no carrinho."
+        },
+        "items": {
+          "name": "Produtos",
+          "description": "Lista opcional de {sku, quantity}; por omissão, a lista de compras toda."
+        }
+      }
+    },
+    "view_basket": {
+      "name": "Ver carrinho",
+      "description": "Devolve o carrinho do Continente."
+    }
+  }
+}

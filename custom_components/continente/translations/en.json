@@ -1,0 +1,97 @@
+{
+  "config": {
+    "step": {
+      "pick_implementation": {
+        "title": "Pick authentication method"
+      },
+      "reauth_confirm": {
+        "title": "Sign in to Continente again",
+        "description": "The Continente login expired or was revoked. Sign in again to keep prices and the basket working."
+      }
+    },
+    "abort": {
+      "already_configured": "Continente is already configured.",
+      "cannot_connect": "Could not reach Continente to start the login. Try again later.",
+      "reauth_successful": "Signed in again.",
+      "missing_configuration": "The Continente login could not be prepared."
+    },
+    "create_entry": {
+      "default": "Signed in to Continente."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Shopping list",
+        "data": {
+          "todo_entity": "Shopping list (todo)"
+        },
+        "data_description": {
+          "todo_entity": "The list whose items get Continente prices."
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "lista": {
+        "name": "Shopping list estimate"
+      },
+      "carrinho": {
+        "name": "Basket"
+      }
+    }
+  },
+  "services": {
+    "search_product": {
+      "name": "Search product",
+      "description": "Searches the Continente catalog.",
+      "fields": {
+        "query": {
+          "name": "Query",
+          "description": "Product name."
+        },
+        "limit": {
+          "name": "Limit",
+          "description": "Number of results."
+        }
+      }
+    },
+    "price_list": {
+      "name": "Price shopping list",
+      "description": "Matches every open item on the shopping list to a Continente product and returns prices."
+    },
+    "choose_product": {
+      "name": "Choose product",
+      "description": "Remembers which Continente product to use for a shopping list item. Without a SKU, forgets the choice.",
+      "fields": {
+        "item": {
+          "name": "Item",
+          "description": "Item name as it appears on the list."
+        },
+        "sku": {
+          "name": "SKU",
+          "description": "Continente product ID."
+        }
+      }
+    },
+    "send_to_basket": {
+      "name": "Send to basket",
+      "description": "Adds the matched products to the Continente basket (the same one as the app). Never places an order.",
+      "fields": {
+        "dry_run": {
+          "name": "Preview only",
+          "description": "Return what would be added without touching the basket."
+        },
+        "items": {
+          "name": "Products",
+          "description": "Optional list of {sku, quantity}; by default, the whole shopping list."
+        }
+      }
+    },
+    "view_basket": {
+      "name": "View basket",
+      "description": "Returns the Continente basket."
+    }
+  }
+}
