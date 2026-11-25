@@ -28,13 +28,14 @@ from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady,
 from homeassistant.helpers import config_entry_oauth2_flow, config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.debounce import Debouncer
-from homeassistant.helpers.event import async_track_state_change_event
+from homeassistant.helpers.event import async_track_state_change_event, async_track_time_change
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import ContinenteApi, ContinenteAuthError, ContinenteError
 from .const import CONF_CLIENT_ID, CONF_TODO_ENTITY, DEFAULT_TODO_ENTITY, DOMAIN, LIST_DEBOUNCE
 from .oauth import ContinenteImplementation
 from .pricing import ListPricer, parse_item
+from .tracker import PriceTracker
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -48,17 +49,21 @@ class ContinenteData:
     pricer: ListPricer
     list_coordinator: DataUpdateCoordinator
     basket_coordinator: DataUpdateCoordinator
+    prices_coordinator: DataUpdateCoordinator
+    tracker: PriceTracker
     todo_entity: str
 
 
 type ContinenteConfigEntry = ConfigEntry[ContinenteData]
 
 
-async def _todo_items(hass: HomeAssistant, entity_id: str) -> list[dict[str, Any]]:
+async def _todo_items(
+    hass: HomeAssistant, entity_id: str, status: tuple[str, ...] = ("needs_action",)
+) -> list[dict[str, Any]]:
     resp = await hass.services.async_call(
         "todo",
         "get_items",
-        {"status": ["needs_action"]},
+        {"status": list(status)},
         target={"entity_id": entity_id},
         blocking=True,
         return_response=True,
@@ -80,11 +85,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ContinenteConfigEntry) -
     api = ContinenteApi(async_get_clientsession(hass), oauth)
     pricer = ListPricer(hass, api, entry.entry_id)
     await pricer.async_load()
+    tracker = PriceTracker(hass, pricer, entry.entry_id)
+    await tracker.async_load()
     todo_entity = entry.options.get(CONF_TODO_ENTITY, DEFAULT_TODO_ENTITY)
 
     async def _update_list() -> dict[str, Any]:
         try:
-            return await pricer.async_price(await _todo_items(hass, todo_entity))
+            items = await _todo_items(hass, todo_entity, ("needs_action", "completed"))
+            await tracker.note_list(items)
+            return await pricer.async_price(items)
         except ContinenteAuthError as err:
             raise ConfigEntryAuthFailed(str(err)) from err
         except (ContinenteError, HomeAssistantError) as err:
@@ -93,6 +102,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ContinenteConfigEntry) -
     async def _update_basket() -> dict[str, Any]:
         try:
             return await api.view_basket()
+        except ContinenteAuthError as err:
+            raise ConfigEntryAuthFailed(str(err)) from err
+        except ContinenteError as err:
+            raise UpdateFailed(str(err)) from err
+
+    async def _update_prices() -> dict[str, Any]:
+        try:
+            return await tracker.async_update()
         except ContinenteAuthError as err:
             raise ConfigEntryAuthFailed(str(err)) from err
         except ContinenteError as err:
@@ -116,15 +133,32 @@ async def async_setup_entry(hass: HomeAssistant, entry: ContinenteConfigEntry) -
         update_interval=timedelta(minutes=30),
     )
 
+    # Sem intervalo: corre no arranque e às 9h e 18h (os avisos de promoção não chegam de madrugada).
+    prices_coordinator = DataUpdateCoordinator(
+        hass,
+        _LOGGER,
+        config_entry=entry,
+        name=f"{DOMAIN} precos",
+        update_method=_update_prices,
+    )
+
     try:
         await basket_coordinator.async_config_entry_first_refresh()
     except ConfigEntryAuthFailed:
         raise
     except Exception as err:
         raise ConfigEntryNotReady(str(err)) from err
-    await list_coordinator.async_refresh()
+    await list_coordinator.async_refresh()  # também regista as compras antes dos preços
+    await prices_coordinator.async_refresh()
 
-    entry.runtime_data = ContinenteData(api, pricer, list_coordinator, basket_coordinator, todo_entity)
+    entry.runtime_data = ContinenteData(
+        api, pricer, list_coordinator, basket_coordinator, prices_coordinator, tracker, todo_entity
+    )
+
+    async def _scheduled_prices(now) -> None:
+        await prices_coordinator.async_refresh()
+
+    entry.async_on_unload(async_track_time_change(hass, _scheduled_prices, hour=[9, 18], minute=0, second=0))
 
     @callback
     def _list_changed(event: Event[EventStateChangedData]) -> None:
@@ -223,6 +257,22 @@ def _register_services(hass: HomeAssistant) -> None:
         basket = d.basket_coordinator.data or {}
         return {"added": added, "failed": failed, "basket_totals": basket.get("totals", {})}
 
+    async def get_product(call: ServiceCall) -> ServiceResponse:
+        """Resposta completa do Continente para um produto (para ver todos os campos)."""
+        d = _data(hass)
+        try:
+            return await d.api.get_product(call.data["sku"])
+        except ContinenteError as err:
+            raise HomeAssistantError(str(err)) from err
+
+    async def update_prices(call: ServiceCall) -> ServiceResponse:
+        d = _data(hass)
+        await d.list_coordinator.async_refresh()
+        await d.prices_coordinator.async_refresh()
+        if not d.prices_coordinator.last_update_success:
+            raise HomeAssistantError(f"Falhou a leitura dos preços: {d.prices_coordinator.last_exception}")
+        return d.prices_coordinator.data
+
     async def view_basket(call: ServiceCall) -> ServiceResponse:
         d = _data(hass)
         await d.basket_coordinator.async_refresh()
@@ -251,3 +301,9 @@ def _register_services(hass: HomeAssistant) -> None:
         supports_response=SupportsResponse.OPTIONAL,
     )
     hass.services.async_register(DOMAIN, "view_basket", view_basket, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(
+        DOMAIN, "get_product", get_product,
+        schema=vol.Schema({vol.Required("sku"): cv.string}),
+        supports_response=SupportsResponse.ONLY,
+    )
+    hass.services.async_register(DOMAIN, "update_prices", update_prices, supports_response=SupportsResponse.OPTIONAL)

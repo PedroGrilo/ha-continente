@@ -44,6 +44,9 @@
       },
       "carrinho": {
         "name": "Carrinho"
+      },
+      "precos": {
+        "name": "Preços das últimas compras"
       }
     }
   },
@@ -97,6 +100,20 @@
     "view_basket": {
       "name": "Ver carrinho",
       "description": "Devolve o carrinho do Continente."
+    },
+    "get_product": {
+      "name": "Detalhes do produto",
+      "description": "Devolve tudo o que o Continente diz sobre um produto.",
+      "fields": {
+        "sku": {
+          "name": "SKU",
+          "description": "ID do produto no Continente."
+        }
+      }
+    },
+    "update_prices": {
+      "name": "Atualizar preços das compras",
+      "description": "Lê já o preço de hoje dos produtos comprados há menos tempo (normalmente às 9h e às 18h)."
     }
   }
 }

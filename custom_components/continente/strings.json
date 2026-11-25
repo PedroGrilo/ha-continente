@@ -44,6 +44,9 @@
       },
       "carrinho": {
         "name": "Basket"
+      },
+      "precos": {
+        "name": "Recent purchase prices"
       }
     }
   },
@@ -97,6 +100,20 @@
     "view_basket": {
       "name": "View basket",
       "description": "Returns the Continente basket."
+    },
+    "get_product": {
+      "name": "Product details",
+      "description": "Returns everything Continente knows about a product.",
+      "fields": {
+        "sku": {
+          "name": "SKU",
+          "description": "Continente product ID."
+        }
+      }
+    },
+    "update_prices": {
+      "name": "Update purchase prices",
+      "description": "Reads today's price of the recently bought products now (normally at 9:00 and 18:00)."
     }
   }
 }

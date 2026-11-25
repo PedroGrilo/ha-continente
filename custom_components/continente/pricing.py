@@ -67,16 +67,56 @@ def matches_usual(item_name: str, product_name: str) -> bool:
     return all(any(p.startswith(w) for p in prod) for w in words[1:])
 
 
+# Campos onde o Continente pode pôr o preço "normal" de um produto em promoção.
+REGULAR_PRICE_KEYS = (
+    "regularPriceEur", "previousPriceEur", "oldPriceEur", "originalPriceEur", "listPriceEur",
+    "wasPriceEur", "priceBeforeDiscountEur", "fullPriceEur",
+)
+
+
+def _regular_price(p: dict[str, Any]) -> float | None:
+    """Preço sem promoção, se o Continente o indicar e for maior do que o atual."""
+    price = p.get("priceEur", p.get("price"))
+    sources = [p] + [p[k] for k in ("promotion", "promo", "discount") if isinstance(p.get(k), dict)]
+    for src in sources:
+        for key in REGULAR_PRICE_KEYS:
+            try:
+                value = float(src[key])
+            except (KeyError, TypeError, ValueError):
+                continue
+            if price is None or value > float(price):
+                return value
+    return None
+
+
 def _product(p: dict[str, Any] | None) -> dict[str, Any] | None:
     if not p or not p.get("sku"):
         return None
-    return {
+    out = {
         "sku": str(p["sku"]),
-        "name": (p.get("name") or "").replace(" ", " ").strip(),
+        "name": (p.get("name") or "").replace("\u00a0", " ").strip(),
         "price": p.get("priceEur"),
         "available": p.get("available", True),
         "image": p.get("imageUrl"),
     }
+    if (regular := _regular_price(p)) is not None:
+        out["regular_price"] = regular
+    return out
+
+
+def product_from_details(data: dict[str, Any], sku: str) -> dict[str, Any] | None:
+    """Converte a resposta de get_product no mesmo formato dos outros produtos."""
+    if data.get("found") is False:
+        return None
+    prod = data.get("product") if isinstance(data.get("product"), dict) else data
+    return _product(
+        {
+            **prod,
+            "sku": prod.get("sku") or prod.get("productId") or sku,
+            "priceEur": prod.get("priceEur", prod.get("price")),
+            "available": prod.get("available", True),
+        }
+    )
 
 
 class ListPricer:
@@ -114,19 +154,9 @@ class ListPricer:
 
     async def choose(self, item_name: str, sku: str) -> dict[str, Any]:
         """Guarda o produto escolhido para um nome de artigo (e lê o preço atual)."""
-        data = await self.api.get_product(sku)
-        if data.get("found") is False:
+        chosen = product_from_details(await self.api.get_product(sku), sku)
+        if chosen is None:
             raise ContinenteError(f"O produto {sku} não existe")
-        prod = data.get("product") if isinstance(data.get("product"), dict) else data
-        chosen = _product(
-            {
-                "sku": prod.get("sku") or prod.get("productId") or sku,
-                "name": prod.get("name"),
-                "priceEur": prod.get("priceEur", prod.get("price")),
-                "available": prod.get("available", True),
-                "imageUrl": prod.get("imageUrl"),
-            }
-        )
         self.choices[norm(item_name)] = chosen
         self._lookup.pop(norm(item_name), None)
         await self._save()
@@ -135,6 +165,53 @@ class ListPricer:
     async def forget(self, item_name: str) -> None:
         if self.choices.pop(norm(item_name), None) is not None:
             await self._save()
+
+    async def refresh_choices(self, names: list[str]) -> None:
+        """Lê outra vez o preço dos produtos escolhidos à mão (guardados com o preço da altura)."""
+        changed = False
+        for key in {norm(n) for n in names} & self.choices.keys():
+            sku = self.choices[key]["sku"]
+            try:
+                fresh = product_from_details(await self.api.get_product(sku), sku)
+            except ContinenteError as err:
+                _LOGGER.debug("Sem preço novo para %s: %s", sku, err)
+                continue
+            if fresh:
+                self.choices[key] = fresh
+                changed = True
+        if changed:
+            await self._save()
+
+    async def async_products(self, names: list[str]) -> dict[str, dict[str, Any] | None]:
+        """Produto (com preço) de cada nome, pela mesma ordem de escolha da lista: norm(nome) -> produto."""
+        async with self._lock:
+            now = time.monotonic()
+            out: dict[str, dict[str, Any] | None] = {}
+            to_search: dict[str, str] = {}
+            usuals = None
+            for name in names:
+                key = norm(name)
+                if not key or key in out:
+                    continue
+                if key in self.choices:
+                    out[key] = self.choices[key]
+                elif key in self._lookup and now - self._lookup[key][0] < LOOKUP_TTL:
+                    out[key] = self._lookup[key][1]["product"]
+                else:
+                    if usuals is None:
+                        usuals = await self._usual_products()
+                    hit = next((p for p in usuals if matches_usual(name, p["name"])), None)
+                    if hit:
+                        others = [p for p in usuals if p is not hit and matches_usual(name, p["name"])][:3]
+                        self._lookup[key] = (now, {"product": hit, "alternatives": others, "source": "habitual"})
+                        out[key] = hit
+                    else:
+                        to_search[key] = name
+            if to_search:
+                await self._search(to_search, now)
+                for key in to_search:
+                    out[key] = self._lookup[key][1]["product"] if key in self._lookup else None
+            return out
 
     async def async_price(self, todo_items: list[dict[str, Any]]) -> dict[str, Any]:
         """Calcula o produto e o preço de cada artigo por comprar."""

@@ -31,6 +31,7 @@ async def async_setup_entry(
         [
             ListPriceSensor(d.list_coordinator, entry, device, d.todo_entity),
             BasketSensor(d.basket_coordinator, entry, device),
+            RecentPricesSensor(d.prices_coordinator, entry, device),
         ]
     )
 
@@ -109,3 +110,30 @@ class BasketSensor(_Base):
                 for i in data.get("items", [])
             ],
         }
+
+
+class RecentPricesSensor(CoordinatorEntity, SensorEntity):
+    """Preço de hoje dos produtos comprados há menos tempo vs. os últimos 7 e 30 dias.
+
+    O estado é o número de produtos a metade do preço (ou menos).
+    """
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "precos"
+    _attr_icon = "mdi:tag-arrow-down"
+    _attr_native_unit_of_measurement = "promoções"
+    _unrecorded_attributes = frozenset({"items"})
+
+    def __init__(self, coordinator, entry, device: DeviceInfo) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_precos"
+        self._attr_device_info = device
+
+    @property
+    def native_value(self) -> int | None:
+        return (self.coordinator.data or {}).get("promotions")
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        data = self.coordinator.data or {}
+        return {"items": data.get("items", []), "updated": data.get("updated")}

@@ -39,3 +39,13 @@ send_to_basket:
         object:
 
 view_basket:
+
+get_product:
+  fields:
+    sku:
+      required: true
+      example: "8504295"
+      selector:
+        text:
+
+update_prices:
