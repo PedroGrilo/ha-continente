@@ -3,8 +3,10 @@
 O Continente só dá o preço de hoje, por isso o histórico é feito aqui: duas vezes por dia
 (e no arranque) lê o preço dos produtos dos artigos comprados há menos tempo e guarda-o.
 
-"Comprado" = artigo marcado como feito na lista de compras. A data fica registada quando
-a integração vê o artigo passar a feito; os que já estavam feitos ao instalar ficam sem data.
+"Comprado" = artigo marcado como feito na lista de compras (a data fica registada quando a
+integração o vê passar a feito; os que já estavam feitos ao instalar ficam sem data), mais os
+"mais comprados" do Cartão Continente, que incluem as compras nas lojas físicas — o MCP do
+Continente não dá os talões das lojas, só este ranking.
 
 Quando um produto fica a metade do preço (ou menos) dispara o evento `continente_promocao`,
 uma vez por promoção, para uma automação mandar a notificação.
@@ -21,7 +23,8 @@ from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN, STORAGE_VERSION
-from .pricing import ListPricer, norm, parse_item
+from .api import ContinenteError
+from .pricing import ListPricer, _product, norm, parse_item
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -114,12 +117,19 @@ class PriceTracker:
         names = [p["name"] for _, p in recent]
         await self.pricer.refresh_choices(names)
         products = await self.pricer.async_products(names)
+        try:
+            most_bought = [p for p in map(_product, await self.pricer.api.most_bought()) if p]
+        except ContinenteError as err:
+            _LOGGER.warning("Sem os mais comprados do Continente: %s", err)
+            most_bought = []
+        listed = {p["sku"] for p in products.values() if p}
+        extra = [p for p in most_bought if p["sku"] not in listed]
 
         today = dt_util.now().date()
         today_s = today.isoformat()
         oldest = (today - timedelta(days=HISTORY_DAYS)).isoformat()
 
-        for product in products.values():
+        for product in [*products.values(), *extra]:
             if product and product.get("price") is not None:
                 days = self.history.setdefault(product["sku"], {})
                 days[today_s] = float(product["price"])
@@ -132,10 +142,12 @@ class PriceTracker:
 
         items = []
         alerts = []
-        for key, purchase in recent:
-            product = products.get(key)
-            items.append(self._row(purchase, product, today))
-            row = items[-1]
+        tracked = [(purchase, products.get(key), "lista") for key, purchase in recent]
+        tracked += [({"name": p["name"], "date": None}, p, "mais_comprados") for p in extra]
+        for purchase, product, source in tracked:
+            row = self._row(purchase, product, today)
+            row["source"] = source
+            items.append(row)
             if product and row["discount"] is not None and row["discount"] >= ALERT_DISCOUNT * 100:
                 sku = product["sku"]
                 if sku not in self.alerted or row["price"] < self.alerted[sku]:

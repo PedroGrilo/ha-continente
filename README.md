@@ -45,7 +45,9 @@ Os nomes da lista podem ter quantidade e categoria no formato do
 
 ## Preços das últimas compras
 
-Os artigos marcados como feitos na lista são as "últimas compras" (os 40 mais recentes). Às 9h e
+Os artigos marcados como feitos na lista são as "últimas compras" (os 40 mais recentes), mais os
+"mais comprados" do Cartão Continente (que incluem as compras nas lojas físicas — o MCP do Continente
+não dá os talões das lojas; cada artigo tem `source`: `lista` ou `mais_comprados`). Às 9h e
 às 18h (e no arranque) a integração lê o preço de hoje de cada um e guarda-o — o Continente só dá
 o preço atual, por isso as médias de 7 e 30 dias vão-se enchendo a partir da instalação.
 
