@@ -265,6 +265,14 @@ def _register_services(hass: HomeAssistant) -> None:
         except ContinenteError as err:
             raise HomeAssistantError(str(err)) from err
 
+    async def list_most_bought(call: ServiceCall) -> ServiceResponse:
+        """Resposta completa dos "mais comprados" do Cartão Continente."""
+        d = _data(hass)
+        try:
+            return await d.api.call_tool("list_most_bought")
+        except ContinenteError as err:
+            raise HomeAssistantError(str(err)) from err
+
     async def update_prices(call: ServiceCall) -> ServiceResponse:
         d = _data(hass)
         await d.list_coordinator.async_refresh()
@@ -306,4 +314,5 @@ def _register_services(hass: HomeAssistant) -> None:
         schema=vol.Schema({vol.Required("sku"): cv.string}),
         supports_response=SupportsResponse.ONLY,
     )
+    hass.services.async_register(DOMAIN, "list_most_bought", list_most_bought, supports_response=SupportsResponse.ONLY)
     hass.services.async_register(DOMAIN, "update_prices", update_prices, supports_response=SupportsResponse.OPTIONAL)

@@ -148,8 +148,19 @@ class ContinenteApi:
         return await self.call_tool("view_basket")
 
     async def most_bought(self) -> list[dict[str, Any]]:
-        return (await self.call_tool("list_most_bought")).get("products", [])
+        return _products(await self.call_tool("list_most_bought"))
 
     async def favorites(self) -> list[dict[str, Any]]:
-        data = await self.call_tool("list_favorites")
-        return data.get("products") or data.get("favorites") or data.get("results") or []
+        return _products(await self.call_tool("list_favorites"))
+
+
+def _products(data: dict[str, Any]) -> list[dict[str, Any]]:
+    """Lista de produtos de uma resposta, venha ela em que chave vier."""
+    for key in ("products", "items", "results", "favorites", "mostBought"):
+        if isinstance(data.get(key), list):
+            return [
+                {**p, "sku": p.get("sku") or p.get("productId") or p.get("id")}
+                for p in data[key]
+                if isinstance(p, dict)
+            ]
+    return []

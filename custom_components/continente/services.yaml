@@ -49,3 +49,5 @@ get_product:
         text:
 
 update_prices:
+
+list_most_bought:

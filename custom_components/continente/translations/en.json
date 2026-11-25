@@ -114,6 +114,10 @@
     "update_prices": {
       "name": "Update purchase prices",
       "description": "Reads today's price of the recently bought products now (normally at 9:00 and 18:00)."
+    },
+    "list_most_bought": {
+      "name": "Most bought",
+      "description": "Returns the Continente card \"most bought\" products as Continente sends them."
     }
   }
 }

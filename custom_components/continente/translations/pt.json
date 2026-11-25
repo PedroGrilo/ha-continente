@@ -114,6 +114,10 @@
     "update_prices": {
       "name": "Atualizar preços das compras",
       "description": "Lê já o preço de hoje dos produtos comprados há menos tempo (normalmente às 9h e às 18h)."
+    },
+    "list_most_bought": {
+      "name": "Mais comprados",
+      "description": "Devolve os \"mais comprados\" do Cartão Continente tal como o Continente os envia."
     }
   }
 }
